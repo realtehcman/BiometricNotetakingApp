@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -16,9 +18,23 @@ import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 
+import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 import java.util.concurrent.Executor;
 
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+
 public class MainActivity extends AppCompatActivity {
+    public static String pass = null;
 
     @RequiresApi(api = Build.VERSION_CODES.P)
     @Override
@@ -60,6 +76,7 @@ public class MainActivity extends AppCompatActivity {
             public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
                 super.onAuthenticationSucceeded(result);
                 Toast.makeText(MainActivity.this, "Login Success !", Toast.LENGTH_SHORT).show();
+                pass = result.toString();
                 startActivity(new Intent(MainActivity.this,DashboardScreen.class));
             }
 
@@ -82,4 +99,27 @@ public class MainActivity extends AppCompatActivity {
         });
 
     }
+
+    @RequiresApi(api = Build.VERSION_CODES.M)
+    private void generateSecretKey(KeyGenParameterSpec keyGenParameterSpec) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidAlgorithmParameterException {
+        KeyGenerator keyGenerator = KeyGenerator.getInstance(
+                KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
+        keyGenerator.init(keyGenParameterSpec);
+        keyGenerator.generateKey();
+    }
+
+    private SecretKey getSecretKey() throws KeyStoreException, CertificateException, IOException, NoSuchAlgorithmException, UnrecoverableKeyException {
+        KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+
+        // Before the keystore can be accessed, it must be loaded.
+        keyStore.load(null);
+        return ((SecretKey)keyStore.getKey("KEY_NAME", null));
+    }
+
+    private Cipher getCipher() throws NoSuchPaddingException, NoSuchAlgorithmException {
+        return Cipher.getInstance(KeyProperties.KEY_ALGORITHM_AES + "/"
+                + KeyProperties.BLOCK_MODE_CBC + "/"
+                + KeyProperties.ENCRYPTION_PADDING_PKCS7);
+    }
+
 }
